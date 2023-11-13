@@ -222,6 +222,14 @@ func (service *DsmService) createVolumeByDsm(dsm *webapi.DSM, spec *models.Creat
 			status.Errorf(codes.InvalidArgument, fmt.Sprintf("Unknown volume fs type: %s, location: %s", dsmVolInfo.FsType, spec.Location))
 	}
 
+	var LUN_SPACE_RECLAMATION = webapi.LunDevAttrib{
+		DevAttrib: "emulate_tpu",
+		Enable:    1,
+	}
+
+	devAttributes := []webapi.LunDevAttrib{}
+	devAttributes = append(devAttributes, LUN_SPACE_RECLAMATION)
+
 	// 3. Create LUN
 	lunSpec := webapi.LunCreateSpec{
 		Name:        spec.LunName,
@@ -229,6 +237,7 @@ func (service *DsmService) createVolumeByDsm(dsm *webapi.DSM, spec *models.Creat
 		Location:    spec.Location,
 		Size:        spec.Size,
 		Type:        lunType,
+		DevAttribs: devAttributes,
 	}
 
 	log.Debugf("LunCreate spec: %v", lunSpec)
