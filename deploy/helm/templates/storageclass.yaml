@@ -19,5 +19,8 @@ reclaimPolicy: {{ . }}
 {{- with .volumeBindingMode }}
 volumeBindingMode: {{ . }}
 {{- end }}
+{{- with .mountOptions }}
+mountOptions: {{ . }}
+{{- end }}
 {{- end }}
 {{- end }}
