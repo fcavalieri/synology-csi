@@ -27,9 +27,9 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"golang.org/x/sys/unix"
 	"k8s.io/mount-utils"
 
 	"github.com/SynologyOpenSource/synology-csi/pkg/dsm/webapi"
@@ -391,6 +391,46 @@ func (ns *nodeServer) nodeStageSMBVolume(ctx context.Context, spec *models.NodeS
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
+func (ns *nodeServer) nodeStageNFSVolume(ctx context.Context, spec *models.NodeStageVolumeSpec) (*csi.NodeStageVolumeResponse, error) {
+	if spec.VolumeCapability.GetBlock() != nil {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("NFS protocol only allows 'mount' access type"))
+	}
+
+	if spec.Source == "" { //"//<host>/<shareName>"
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Missing 'source' field"))
+	}
+
+	// create mount point if not exists
+	targetPath := spec.StagingTargetPath
+	notMount, err := createTargetMountPath(ns.Mounter.Interface, targetPath, false)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if !notMount {
+		log.Infof("NodeStageVolume: %s is already mounted", targetPath)
+		return &csi.NodeStageVolumeResponse{}, nil // already mount
+	}
+
+	fsType := "nfs"
+	options := spec.VolumeCapability.GetMount().GetMountFlags()
+
+	volumeMountGroup := spec.VolumeCapability.GetMount().GetVolumeMountGroup()
+	gidPresent, err := checkGidPresentInMountFlags(volumeMountGroup, options)
+	if err != nil {
+		return nil, err
+	}
+	if !gidPresent && volumeMountGroup != "" {
+		options = append(options, fmt.Sprintf("gid=%s", volumeMountGroup))
+	}
+
+	var sensitiveOptions = []string{}
+	if err := ns.mountSensitiveWithRetry(spec.Source, targetPath, fsType, options, sensitiveOptions); err != nil {
+		return nil, status.Error(codes.Internal,
+			fmt.Sprintf("Volume[%s] failed to mount %q on %q. err: %v", spec.VolumeId, spec.Source, targetPath, err))
+	}
+	return &csi.NodeStageVolumeResponse{}, nil
+}
+
 func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	volumeId, stagingTargetPath, volumeCapability :=
 		req.GetVolumeId(), req.GetStagingTargetPath(), req.GetVolumeCapability()
@@ -416,6 +456,8 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	switch req.VolumeContext["protocol"] {
 	case utils.ProtocolSmb:
 		return ns.nodeStageSMBVolume(ctx, spec, req.GetSecrets())
+	case utils.ProtocolNfs:
+		return ns.nodeStageNFSVolume(ctx, spec)
 	default:
 		return ns.nodeStageISCSIVolume(ctx, spec)
 	}
@@ -477,6 +519,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	switch req.VolumeContext["protocol"] {
 	case utils.ProtocolSmb:
+	case utils.ProtocolNfs:
 		if err := ns.Mounter.Interface.Mount(stagingTargetPath, targetPath, "", options); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
@@ -574,7 +617,7 @@ func (ns *nodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVo
 			fmt.Sprintf("Volume[%s] does not exist on the %s", volumeId, volumePath))
 	}
 
-	if k8sVolume.Protocol == utils.ProtocolSmb {
+	if k8sVolume.Protocol == utils.ProtocolSmb || k8sVolume.Protocol == utils.ProtocolNfs {
 		return &csi.NodeGetVolumeStatsResponse{
 			Usage: []*csi.VolumeUsage{
 				&csi.VolumeUsage{
@@ -635,7 +678,7 @@ func (ns *nodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandV
 		return nil, status.Error(codes.NotFound, fmt.Sprintf("Volume[%s] is not found", volumeId))
 	}
 
-	if k8sVolume.Protocol == utils.ProtocolSmb {
+	if k8sVolume.Protocol == utils.ProtocolSmb || k8sVolume.Protocol == utils.ProtocolNfs {
 		return &csi.NodeExpandVolumeResponse{
 			CapacityBytes: sizeInByte}, nil
 	}

@@ -8,30 +8,30 @@ import (
 	"net/url"
 	"strconv"
 
-	log "github.com/sirupsen/logrus"
-	"github.com/SynologyOpenSource/synology-csi/pkg/utils"
 	"github.com/SynologyOpenSource/synology-csi/pkg/logger"
+	"github.com/SynologyOpenSource/synology-csi/pkg/utils"
+	log "github.com/sirupsen/logrus"
 )
 
 type ShareInfo struct {
-	Name                string `json:"name"`                        // required
-	VolPath             string `json:"vol_path"`                    // required
+	Name                string `json:"name"`     // required
+	VolPath             string `json:"vol_path"` // required
 	Desc                string `json:"desc"`
-	EnableShareCow      bool   `json:"enable_share_cow"`            // field for create
+	EnableShareCow      bool   `json:"enable_share_cow"` // field for create
 	EnableRecycleBin    bool   `json:"enable_recycle_bin"`
 	RecycleBinAdminOnly bool   `json:"recycle_bin_admin_only"`
-	Encryption          int    `json:"encryption"`                  // field for create
+	Encryption          int    `json:"encryption"` // field for create
 	QuotaForCreate      *int64 `json:"share_quota,omitempty"`
-	QuotaValueInMB      int64  `json:"quota_value"`                 // field for get
-	SupportSnapshot     bool   `json:"support_snapshot"`            // field for get
-	Uuid                string `json:"uuid"`                        // field for get
-	NameOrg             string `json:"name_org"`                    // required for clone
+	QuotaValueInMB      int64  `json:"quota_value"`      // field for get
+	SupportSnapshot     bool   `json:"support_snapshot"` // field for get
+	Uuid                string `json:"uuid"`             // field for get
+	NameOrg             string `json:"name_org"`         // required for clone
 }
 
 type ShareUpdateInfo struct {
-	Name                string `json:"name"`                        // required
-	VolPath             string `json:"vol_path"`                    // required
-	QuotaForCreate      *int64 `json:"share_quota,omitempty"`
+	Name           string `json:"name"`     // required
+	VolPath        string `json:"vol_path"` // required
+	QuotaForCreate *int64 `json:"share_quota,omitempty"`
 	// Add properties you want to update to shares here
 }
 
@@ -63,7 +63,7 @@ type ShareSnapshotCreateSpec struct {
 
 type SharePermissionSetSpec struct {
 	Name          string
-	UserGroupType string            // "local_user"/"local_group"/"system"
+	UserGroupType string // "local_user"/"local_group"/"system"
 	Permissions   []*SharePermission
 }
 
@@ -74,6 +74,31 @@ type SharePermission struct {
 	IsDeny     bool   `json:"is_deny"`
 	IsCustom   bool   `json:"is_custom,omitempty"`
 	IsAdmin    bool   `json:"is_admin,omitempty"` // field for list
+}
+
+type ShareNFSPermission struct {
+	Api       string         `json:"api"`
+	Method    string         `json:"method"`
+	Version   string         `json:"version"`
+	ShareName string         `json:"share_name"`
+	Rule      []ShareNFSRule `json:"rule"`
+}
+
+type ShareNFSRule struct {
+	Client         string         `json:"client"`
+	Privilege      string         `json:"privilege"`
+	RootSquash     string         `json:"root_squash"`
+	Async          bool           `json:"async"`
+	Insecure       bool           `json:"insecure"`
+	Crossmnt       bool           `json:"crossmnt"`
+	SecurityFlavor SecurityFlavor `json:"security_flavor"`
+}
+
+type SecurityFlavor struct {
+	Kerberos          bool `json:"kerberos"`
+	KerberosIntegrity bool `json:"kerberos_integrity"`
+	KerberosPrivacy   bool `json:"kerberos_privacy"`
+	Sys               bool `json:"sys"`
 }
 
 func shareErrCodeMapping(errCode int, oriErr error) error {
@@ -149,6 +174,34 @@ func (dsm *DSM) ShareCreate(spec ShareCreateSpec) error {
 	}
 	params.Add("shareinfo", string(js))
 
+	resp, err := dsm.sendRequest("", &struct{}{}, params, "webapi/entry.cgi")
+
+	return shareErrCodeMapping(resp.ErrorCode, err)
+}
+
+func (dsm *DSM) ShareSetNFSPermissions(name string, spec ShareNFSRule) error {
+	params := url.Values{}
+	params.Add("api", "SYNO.Entry.Request")
+	params.Add("method", "request")
+	params.Add("version", "1")
+	params.Add("stop_when_error", "true")
+	params.Add("mode", "sequential")
+
+	compound := []ShareNFSPermission{{
+		Api:       "SYNO.Core.FileServ.NFS.SharePrivilege",
+		Method:    "save",
+		Version:   "1",
+		ShareName: name,
+		Rule:      []ShareNFSRule{spec},
+	},
+	}
+
+	js, err := json.Marshal(compound)
+	if err != nil {
+		return err
+	}
+
+	params.Add("compound", string(js))
 	resp, err := dsm.sendRequest("", &struct{}{}, params, "webapi/entry.cgi")
 
 	return shareErrCodeMapping(resp.ErrorCode, err)
@@ -360,4 +413,3 @@ func (dsm *DSM) SharePermissionList(shareName string, userGroupType string) ([]S
 
 	return infos.Permissions, nil
 }
-

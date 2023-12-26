@@ -24,6 +24,9 @@ synology-csi-driver:
 docker-build:
 	docker build -f Dockerfile -t $(IMAGE_TAG) .
 
+docker-push:
+	docker push $(IMAGE_TAG) .
+
 docker-build-multiarch:
 	docker buildx build -t $(IMAGE_TAG) --platform linux/amd64,linux/arm/v7,linux/arm64 . --push
 

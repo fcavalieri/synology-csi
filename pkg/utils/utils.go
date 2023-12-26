@@ -14,6 +14,7 @@ const (
 	UNIT_GB = 1024 * 1024 * 1024
 	UNIT_MB = 1024 * 1024
 
+	ProtocolNfs     = "nfs"
 	ProtocolSmb     = "smb"
 	ProtocolIscsi   = "iscsi"
 	ProtocolDefault = ProtocolIscsi

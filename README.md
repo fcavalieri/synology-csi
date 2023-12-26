@@ -11,7 +11,7 @@ The official [Container Storage Interface](https://github.com/container-storage-
 Driver Name: csi.san.synology.com
 | Driver Version                                                                   | Image                                                                 | Supported K8s Version |
 | -------------------------------------------------------------------------------- | --------------------------------------------------------------------- | --------------------- |
-| [v1.1.3](https://github.com/SynologyOpenSource/synology-csi/tree/release-v1.1.3) | [synology-csi:v1.1.3](https://hub.docker.com/r/synology/synology-csi) | 1.20+                 |
+| [v1.1.5](https://github.com/SynologyOpenSource/synology-csi/tree/release-v1.1.5) | [synology-csi:v1.1.5](https://hub.docker.com/r/fcavalieri/synology-csi) | 1.20+                 |
 
 
 
@@ -53,7 +53,7 @@ The Synology CSI driver supports:
         - *basic*:
             `./scripts/deploy.sh build && ./scripts/deploy.sh install --basic`
 
-        If you don’t need to build the driver locally and want to pull the [image](https://hub.docker.com/r/synology/synology-csi) from Docker instead, run the command as instructed below.
+        If you don’t need to build the driver locally and want to pull the [image](https://hub.docker.com/r/fcavalieri/synology-csi) from Docker instead, run the command as instructed below.
 
         - *full*:
             `./scripts/deploy.sh install --all`
@@ -220,7 +220,7 @@ Create and apply VolumeSnapshotClasses with the properties you want.
 
 ## Building & Manually Installing
 
-By default, the CSI driver will pull the latest [image](https://hub.docker.com/r/synology/synology-csi) from Docker Hub.
+By default, the CSI driver will pull the latest [image](https://hub.docker.com/r/fcavalieri/synology-csi) from Docker Hub.
 
 If you want to use images you built locally for installation, edit all files under `deploy/kubernetes/<k8s version>/`  and make sure `imagePullPolicy: IfNotPresent` is included in every csi-plugin container.
 
