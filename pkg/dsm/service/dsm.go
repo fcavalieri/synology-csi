@@ -198,7 +198,7 @@ func (service *DsmService) createMappingTarget(dsm *webapi.DSM, spec *models.Cre
 	return targetInfo, nil
 }
 
-func (service *DsmService) createVolumeByDsm(dsm *webapi.DSM, spec *models.CreateK8sVolumeSpec) (*models.K8sVolumeRespSpec, error) {
+func (service *DsmService) createISCSIVolumeByDsm(dsm *webapi.DSM, spec *models.CreateK8sVolumeSpec) (*models.K8sVolumeRespSpec, error) {
 	// 1. Find a available location
 	if spec.Location == "" {
 		vol, err := service.getFirstAvailableVolume(dsm, spec.Size)
@@ -436,8 +436,10 @@ func (service *DsmService) CreateVolume(spec *models.CreateK8sVolumeSpec) (*mode
 
 		if spec.Protocol == utils.ProtocolIscsi {
 			return service.createVolumeByVolume(dsm, spec, k8sVolume.Lun)
-		} else if spec.Protocol == utils.ProtocolSmb || spec.Protocol == utils.ProtocolNfs {
+		} else if spec.Protocol == utils.ProtocolSmb {
 			return service.createSMBVolumeByVolume(dsm, spec, k8sVolume.Share)
+		} else if spec.Protocol == utils.ProtocolNfs {
+			return nil, status.Error(codes.InvalidArgument, "Not implemented")
 		}
 		return nil, status.Error(codes.InvalidArgument, "Unknown protocol")
 	}
@@ -473,8 +475,10 @@ func (service *DsmService) CreateVolume(spec *models.CreateK8sVolumeSpec) (*mode
 
 		if spec.Protocol == utils.ProtocolIscsi {
 			return service.createVolumeBySnapshot(dsm, spec, snapshot)
-		} else if spec.Protocol == utils.ProtocolSmb || spec.Protocol == utils.ProtocolNfs {
+		} else if spec.Protocol == utils.ProtocolSmb {
 			return service.createSMBVolumeBySnapshot(dsm, spec, snapshot)
+		} else if spec.Protocol == utils.ProtocolNfs {
+			return nil, status.Error(codes.InvalidArgument, "Not implemented")
 		}
 		return nil, status.Error(codes.InvalidArgument, "Unknown protocol")
 	}
@@ -488,9 +492,11 @@ func (service *DsmService) CreateVolume(spec *models.CreateK8sVolumeSpec) (*mode
 		var k8sVolume *models.K8sVolumeRespSpec
 		var err error
 		if spec.Protocol == utils.ProtocolIscsi {
-			k8sVolume, err = service.createVolumeByDsm(dsm, spec)
-		} else if spec.Protocol == utils.ProtocolSmb || spec.Protocol == utils.ProtocolNfs {
+			k8sVolume, err = service.createISCSIVolumeByDsm(dsm, spec)
+		} else if spec.Protocol == utils.ProtocolSmb {
 			k8sVolume, err = service.createSMBVolumeByDsm(dsm, spec)
+		} else if spec.Protocol == utils.ProtocolNfs {
+			k8sVolume, err = service.createNFSVolumeByDsm(dsm, spec)
 		}
 
 		if err != nil {
@@ -584,6 +590,7 @@ func (service *DsmService) listISCSIVolumes(dsmIp string) (infos []*models.K8sVo
 func (service *DsmService) ListVolumes() (infos []*models.K8sVolumeRespSpec) {
 	infos = append(infos, service.listISCSIVolumes("")...)
 	infos = append(infos, service.listSMBVolumes("")...)
+	infos = append(infos, service.listNFSVolumes("")...)
 
 	return infos
 }
@@ -600,10 +607,15 @@ func (service *DsmService) GetVolume(volId string) *models.K8sVolumeRespSpec {
 }
 
 func (service *DsmService) GetVolumeByName(volName string) *models.K8sVolumeRespSpec {
+	shareName := models.GenShareName(volName, utils.ProtocolIscsi)
+	if shareName == "" {
+		log.Errorf("Failed to compute share name")
+	}
+
 	volumes := service.ListVolumes()
 	for _, volume := range volumes {
 		if volume.Name == models.GenLunName(volName) ||
-			volume.Name == models.GenShareName(volName) {
+			(volume.Name != "" && volume.Name == shareName) {
 			return volume
 		}
 	}
@@ -696,7 +708,7 @@ func (service *DsmService) CreateSnapshot(spec *models.CreateK8sVolumeSnapshotSp
 		}
 
 		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("Failed to get iscsi snapshot (%s). Not found", snapshotUuid))
-	} else if k8sVolume.Protocol == utils.ProtocolSmb || k8sVolume.Protocol == utils.ProtocolNfs {
+	} else if k8sVolume.Protocol == utils.ProtocolSmb {
 		snapshotSpec := webapi.ShareSnapshotCreateSpec{
 			ShareName: k8sVolume.Share.Name,
 			Desc:      models.ShareSnapshotDescPrefix + spec.SnapshotName, // limitations: don't change the desc by DSM
@@ -715,6 +727,8 @@ func (service *DsmService) CreateSnapshot(spec *models.CreateK8sVolumeSnapshotSp
 			}
 		}
 		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("Failed to get smb snapshot (%s, %s). Not found", snapshotTime, srcVolId))
+	} else if k8sVolume.Protocol == utils.ProtocolNfs {
+		return nil, status.Errorf(codes.Internal, "Not implemented")
 	}
 
 	return nil, status.Error(codes.InvalidArgument, "Unsupported volume protocol")
@@ -740,7 +754,7 @@ func (service *DsmService) DeleteSnapshot(snapshotUuid string) error {
 		return err
 	}
 
-	if snapshot.Protocol == utils.ProtocolSmb || snapshot.Protocol == utils.ProtocolNfs {
+	if snapshot.Protocol == utils.ProtocolSmb {
 		if err := dsm.ShareSnapshotDelete(snapshot.Time, snapshot.ParentName); err != nil {
 			if snapshot := service.getSMBSnapshot(snapshotUuid); snapshot == nil { // idempotency
 				return nil
@@ -758,6 +772,9 @@ func (service *DsmService) DeleteSnapshot(snapshotUuid string) error {
 			log.Errorf("Failed to delete LUN snapshot [%s]. err: %v", snapshotUuid, err)
 			return err
 		}
+	} else if snapshot.Protocol == utils.ProtocolNfs {
+		log.Errorf("Not implemeted")
+		return fmt.Errorf("Not implemented")
 	}
 
 	return nil

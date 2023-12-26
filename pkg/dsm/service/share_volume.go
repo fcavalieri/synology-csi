@@ -173,9 +173,26 @@ func (service *DsmService) createSMBVolumeByDsm(dsm *webapi.DSM, spec *models.Cr
 			status.Errorf(codes.Internal, fmt.Sprintf("Failed to get existed Share with name: %s, err: %v", spec.ShareName, err))
 	}
 
-	// 3. Set NFS permissions
+	log.Debugf("[%s] createSMBVolumeByDsm Successfully. VolumeId: %s", dsm.Ip, shareInfo.Uuid)
+
+	return DsmSMBShareToK8sVolume(dsm.Ip, shareInfo), nil
+}
+
+func (service *DsmService) createNFSVolumeByDsm(dsm *webapi.DSM, spec *models.CreateK8sVolumeSpec) (*models.K8sVolumeRespSpec, error) {
+
+	if spec.NfsClients == "" {
+		return nil, status.Errorf(codes.Internal, "nfsClients is undefined")
+	}
+
+	// 1. Create SMB volume
+	_, err := service.createSMBVolumeByDsm(dsm, spec)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Set NFS permissions
 	nfsRule := webapi.ShareNFSRule{
-		Client:     "192.168.1.0/24",
+		Client:     spec.NfsClients,
 		Privilege:  "rw",
 		RootSquash: "root",
 		Async:      true,
@@ -195,13 +212,15 @@ func (service *DsmService) createSMBVolumeByDsm(dsm *webapi.DSM, spec *models.Cr
 		return nil, status.Errorf(codes.Internal, fmt.Sprintf("Failed to set NFS permissions on share, err: %v", err))
 	}
 
+	shareInfo, err := dsm.ShareGet(spec.ShareName)
+	if err != nil {
+		return nil,
+			status.Errorf(codes.Internal, fmt.Sprintf("Failed to get existed Share with name: %s, err: %v", spec.ShareName, err))
+	}
+
 	log.Debugf("[%s] createSMBVolumeByDsm Successfully. VolumeId: %s", dsm.Ip, shareInfo.Uuid)
 
-	if spec.Protocol == utils.ProtocolSmb {
-		return DsmSMBShareToK8sVolume(dsm.Ip, shareInfo), nil
-	} else {
-		return DsmNFSShareToK8sVolume(dsm.Ip, shareInfo), nil
-	}
+	return DsmNFSShareToK8sVolume(dsm.Ip, shareInfo), nil
 }
 
 func (service *DsmService) listSMBVolumes(dsmIp string) (infos []*models.K8sVolumeRespSpec) {
@@ -221,10 +240,37 @@ func (service *DsmService) listSMBVolumes(dsmIp string) (infos []*models.K8sVolu
 		}
 
 		for _, share := range shares {
-			if !strings.HasPrefix(share.Name, models.SharePrefix) {
+			if !strings.HasPrefix(share.Name, models.SharePrefixSMB) {
 				continue
 			}
 			infos = append(infos, DsmSMBShareToK8sVolume(dsm.Ip, share))
+		}
+	}
+
+	return infos
+}
+
+func (service *DsmService) listNFSVolumes(dsmIp string) (infos []*models.K8sVolumeRespSpec) {
+	for _, dsm := range service.dsms {
+		if dsmIp != "" && dsmIp != dsm.Ip {
+			continue
+		}
+
+		if dsm.IsUC() {
+			continue
+		}
+
+		shares, err := dsm.ShareList()
+		if err != nil {
+			log.Errorf("[%s] Failed to list shares: %v", dsm.Ip, err)
+			continue
+		}
+
+		for _, share := range shares {
+			if !strings.HasPrefix(share.Name, models.SharePrefixNFS) {
+				continue
+			}
+			infos = append(infos, DsmNFSShareToK8sVolume(dsm.Ip, share))
 		}
 	}
 
