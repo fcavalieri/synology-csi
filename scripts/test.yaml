@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: synology-csi-test
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+ name: pvc-iscsi
+ namespace: synology-csi-test
+spec:
+ storageClassName: synology-csi-iscsi-delete
+ accessModes:
+ - ReadWriteMany
+ resources:
+    requests:
+      storage: 1Gi
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+ name: pvc-smb
+ namespace: synology-csi-test
+spec:
+ storageClassName: synology-csi-smb-delete
+ accessModes:
+ - ReadWriteMany
+ resources:
+    requests:
+      storage: 1Gi
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test
+  namespace: synology-csi-test
+  labels:
+    app: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: test
+    spec:
+      containers:
+      - name: ubuntu
+        image: ubuntu:22.04
+        command:
+        - "/bin/bash"
+        - "-c"
+        - "sleep infinity"
+        volumeMounts:
+        # - name: nfs
+        #   mountPath: /nfs
+        - name: smb
+          mountPath: /smb
+        - name: iscsi
+          mountPath: /iscsi
+      volumes:
+      # - name: nfs
+      #   persistentVolumeClaim:
+      #     claimName: pvc-nfs
+      - name: smb
+        persistentVolumeClaim:
+          claimName: pvc-smb
+      - name: iscsi
+        persistentVolumeClaim:
+          claimName: pvc-iscsi
