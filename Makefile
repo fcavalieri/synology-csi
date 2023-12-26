@@ -1,8 +1,8 @@
 #  Copyright 2021 Synology Inc.
 
-REGISTRY_NAME=fcavalieri83
+REGISTRY_NAME=fcavalieri
 IMAGE_NAME=synology-csi
-IMAGE_VERSION=v1.1.4
+IMAGE_VERSION=v1.1.5
 IMAGE_TAG=$(REGISTRY_NAME)/$(IMAGE_NAME):$(IMAGE_VERSION)
 
 # For now, only build linux/amd64 platform
@@ -26,6 +26,9 @@ docker-build:
 
 docker-build-multiarch:
 	docker buildx build -t $(IMAGE_TAG) --platform linux/amd64,linux/arm/v7,linux/arm64 . --push
+
+docker-push:
+	docker push $(IMAGE_TAG)
 
 synocli:
 	@mkdir -p bin

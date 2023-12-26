@@ -1,0 +1,114 @@
+clientInfoSecret:
+  clients:
+    - host: 192.168.1.22         # the IP address of the Diskstation
+      https: false               # whether the port expects HTTPS or not
+      password: "***" # the password of the dedicated CSI user
+      port: 5000                 # the port for connecting to the Diskstation Manager application
+      username: synology-csi     # the name of the dedicated CSI user  
+images:
+  plugin:
+    image: fcavalieri/synology-csi
+    pullPolicy: Always
+node:
+  kubeletPath: /var/snap/microk8s/common/var/lib/kubelet
+storageClasses:
+  iscsi-retain:
+    reclaimPolicy: Retain
+    parameters:
+      protocol: "iscsi"
+      dsm: "192.168.1.22"
+      fsType: btrfs
+      location: /volume2
+    mountOptions: 
+    - discard
+  iscsi-delete:
+    reclaimPolicy: Delete
+    parameters:
+      protocol: "iscsi"
+      dsm: "192.168.1.22"
+      fsType: btrfs
+      location: /volume2
+    mountOptions: 
+    - discard
+  iscsi-magnetic-retain:
+    reclaimPolicy: Retain
+    parameters:
+      protocol: "iscsi"
+      dsm: "192.168.1.22"
+      fsType: btrfs
+      location: /volume1
+    mountOptions: 
+    - discard
+  iscsi-magnetic-delete:
+    reclaimPolicy: Delete
+    parameters:
+      protocol: "iscsi"
+      dsm: "192.168.1.22"
+      fsType: btrfs
+      location: /volume1
+    mountOptions: 
+    - discard
+  smb-retain:
+    reclaimPolicy: Retain
+    parameters:
+      protocol: "smb"
+      dsm: '192.168.1.22'
+      location: '/volume2'
+      csi.storage.k8s.io/node-stage-secret-name: "cifs-csi-credentials"
+      csi.storage.k8s.io/node-stage-secret-namespace: "synology-csi"
+  smb-delete:
+    reclaimPolicy: Delete
+    parameters:
+      protocol: "smb"
+      dsm: '192.168.1.22'
+      location: '/volume2'
+      csi.storage.k8s.io/node-stage-secret-name: "cifs-csi-credentials"
+      csi.storage.k8s.io/node-stage-secret-namespace: "synology-csi"
+  smb-magnetic-retain:
+    reclaimPolicy: Retain
+    parameters:
+      protocol: "smb"
+      dsm: '192.168.1.22'
+      location: '/volume1'
+      csi.storage.k8s.io/node-stage-secret-name: "cifs-csi-credentials"
+      csi.storage.k8s.io/node-stage-secret-namespace: "synology-csi"
+  smb-magnetic-delete:
+    reclaimPolicy: Delete
+    parameters:
+      protocol: "smb"
+      dsm: '192.168.1.22'
+      location: '/volume1'
+      csi.storage.k8s.io/node-stage-secret-name: "cifs-csi-credentials"
+      csi.storage.k8s.io/node-stage-secret-namespace: "synology-csi"  
+  nfs-retain:
+    reclaimPolicy: Retain
+    parameters:
+      protocol: "nfs"
+      dsm: '192.168.1.22'
+      location: '/volume2'
+      csi.storage.k8s.io/node-stage-secret-name: "cifs-csi-credentials"
+      csi.storage.k8s.io/node-stage-secret-namespace: "synology-csi"
+  nfs-delete:
+    reclaimPolicy: Delete
+    parameters:
+      protocol: "nfs"
+      dsm: '192.168.1.22'
+      location: '/volume2'
+      csi.storage.k8s.io/node-stage-secret-name: "cifs-csi-credentials"
+      csi.storage.k8s.io/node-stage-secret-namespace: "synology-csi"  
+  nfs-magnetic-retain:
+    reclaimPolicy: Retain
+    parameters:
+      protocol: "nfs"
+      dsm: '192.168.1.22'
+      location: '/volume1'
+      csi.storage.k8s.io/node-stage-secret-name: "cifs-csi-credentials"
+      csi.storage.k8s.io/node-stage-secret-namespace: "synology-csi"
+  nfs-magnetic-delete:
+    reclaimPolicy: Delete
+    parameters:
+      protocol: "nfs"
+      dsm: '192.168.1.22'
+      location: '/volume1'
+      csi.storage.k8s.io/node-stage-secret-name: "cifs-csi-credentials"
+      csi.storage.k8s.io/node-stage-secret-namespace: "synology-csi"

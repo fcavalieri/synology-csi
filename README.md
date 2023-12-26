@@ -1,10 +1,7 @@
 # Synology CSI Driver for Kubernetes
 
-## My publishing commands
+## My commands
 ```
-sudo apt-get update && sudo apt-get -y install golang-go build-essential
-./build.sh # Check for errors a command that exit with error code != 0 does not cause the call to stop
-docker push fcavalieri83/synology-csi:v1.1.4
 ```
 
 ## Official Readme
