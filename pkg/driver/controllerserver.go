@@ -131,7 +131,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	// not needed during CreateVolume method
 	// used only in NodeStageVolume though VolumeContext
 	formatOptions := params["formatOptions"]
-
+	nfsClients := params["nfsClients"]
 	lunDescription := ""
 	if _, ok := params["csi.storage.k8s.io/pvc/name"]; ok {
 		// if the /pvc/name is present, the namespace is present too
@@ -141,12 +141,18 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		lunDescription = pvcNamespace + "/" + pvcName
 	}
 
+	shareName := models.GenShareName(volName, protocol)
+	if shareName == "" {
+		return nil, status.Error(codes.InvalidArgument, "Cannot generate share name")
+	}
+
 	spec := &models.CreateK8sVolumeSpec{
 		DsmIp:            params["dsm"],
+		NfsClients:       nfsClients,
 		K8sVolumeName:    volName,
 		LunName:          models.GenLunName(volName),
 		LunDescription:   lunDescription,
-		ShareName:        models.GenShareName(volName),
+		ShareName:        shareName,
 		Location:         params["location"],
 		Size:             sizeInByte,
 		Type:             params["type"],
@@ -172,7 +178,8 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 
 	if (k8sVolume.Protocol == utils.ProtocolIscsi && k8sVolume.SizeInBytes != sizeInByte) ||
-		(k8sVolume.Protocol == utils.ProtocolSmb && utils.BytesToMB(k8sVolume.SizeInBytes) != utils.BytesToMBCeil(sizeInByte)) {
+		(k8sVolume.Protocol == utils.ProtocolSmb && utils.BytesToMB(k8sVolume.SizeInBytes) != utils.BytesToMBCeil(sizeInByte)) ||
+		(k8sVolume.Protocol == utils.ProtocolNfs && utils.BytesToMB(k8sVolume.SizeInBytes) != utils.BytesToMBCeil(sizeInByte)) {
 		return nil, status.Errorf(codes.AlreadyExists, "Already existing volume name with different capacity")
 	}
 
@@ -186,6 +193,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 				"protocol":      k8sVolume.Protocol,
 				"source":        k8sVolume.Source,
 				"formatOptions": formatOptions,
+				"nfsClients":    nfsClients,
 			},
 		},
 	}, nil

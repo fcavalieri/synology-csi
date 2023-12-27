@@ -37,7 +37,7 @@ images:
     image: fcavalieri/synology-csi
     pullPolicy: IfNotPresent
     # Defaults to {{ $.Chart.AppVersion }} if empty or not present:
-    tag: ""
+    tag: v2.0.0
   provisioner:
     image: registry.k8s.io/sig-storage/csi-provisioner
     pullPolicy: IfNotPresent
