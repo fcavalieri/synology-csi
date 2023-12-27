@@ -41,6 +41,10 @@ func GenLunName(volName string) string {
 	return fmt.Sprintf("%s-%s", LunPrefix, volName)
 }
 
+func GenTargetName(volName string) string {
+	return fmt.Sprintf("%s-%s", TargetPrefix, volName)
+}
+
 func GenShareName(volName string, protocol string) string {
 	shareName := ""
 	if protocol == utils.ProtocolIscsi {

@@ -132,13 +132,15 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	// used only in NodeStageVolume though VolumeContext
 	formatOptions := params["formatOptions"]
 	nfsClients := params["nfsClients"]
-	lunDescription := ""
+	namePrefix := ""
+	description := ""
 	if _, ok := params["csi.storage.k8s.io/pvc/name"]; ok {
 		// if the /pvc/name is present, the namespace is present too
 		// as these parameters are reserved by external-provisioner
 		pvcNamespace := params["csi.storage.k8s.io/pvc/namespace"]
 		pvcName := params["csi.storage.k8s.io/pvc/name"]
-		lunDescription = pvcNamespace + "/" + pvcName
+		description = pvcNamespace + "/" + pvcName
+		namePrefix = pvcNamespace + "-" + pvcName + "-"
 	}
 
 	shareName := models.GenShareName(volName, protocol)
@@ -151,13 +153,13 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		NfsClients:       nfsClients,
 		K8sVolumeName:    volName,
 		LunName:          models.GenLunName(volName),
-		LunDescription:   lunDescription,
+		Description:      description,
 		ShareName:        shareName,
 		Location:         params["location"],
 		Size:             sizeInByte,
 		Type:             params["type"],
 		ThinProvisioning: isThin,
-		TargetName:       fmt.Sprintf("%s-%s", models.TargetPrefix, volName),
+		TargetName:       models.GenTargetName(volName),
 		MultipleSession:  multiSession,
 		SourceSnapshotId: srcSnapshotId,
 		SourceVolumeId:   srcVolumeId,

@@ -152,7 +152,7 @@ func (service *DsmService) createSMBVolumeByDsm(dsm *webapi.DSM, spec *models.Cr
 		ShareInfo: webapi.ShareInfo{
 			Name:                spec.ShareName,
 			VolPath:             spec.Location,
-			Desc:                "Created by Synology K8s CSI",
+			Desc:                spec.Description,
 			EnableShareCow:      false,
 			EnableRecycleBin:    true,
 			RecycleBinAdminOnly: true,
