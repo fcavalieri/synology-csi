@@ -35,6 +35,21 @@ spec:
 
 ---
 
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-nfs
+  namespace: synology-csi-test
+spec:
+  storageClassName: synology-csi-nfs-delete
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -62,16 +77,16 @@ spec:
         - "-c"
         - "sleep infinity"
         volumeMounts:
-        # - name: nfs
-        #   mountPath: /nfs
+        - name: nfs
+          mountPath: /nfs
         - name: smb
           mountPath: /smb
         - name: iscsi
           mountPath: /iscsi
       volumes:
-      # - name: nfs
-      #   persistentVolumeClaim:
-      #     claimName: pvc-nfs
+      - name: nfs
+        persistentVolumeClaim:
+          claimName: pvc-nfs
       - name: smb
         persistentVolumeClaim:
           claimName: pvc-smb

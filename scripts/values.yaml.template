@@ -86,21 +86,25 @@ storageClasses:
       protocol: "nfs"
       dsm: '192.168.1.22'
       location: '/volume2'
+      nfsClients: "192.168.1.0/24"
   nfs-delete:
     reclaimPolicy: Delete
     parameters:
       protocol: "nfs"
       dsm: '192.168.1.22'
       location: '/volume2'
+      nfsClients: "192.168.1.0/24"
   nfs-magnetic-retain:
     reclaimPolicy: Retain
     parameters:
       protocol: "nfs"
       dsm: '192.168.1.22'
       location: '/volume1'
+      nfsClients: "192.168.1.0/24"
   nfs-magnetic-delete:
     reclaimPolicy: Delete
     parameters:
       protocol: "nfs"
       dsm: '192.168.1.22'
       location: '/volume1'
+      nfsClients: "192.168.1.0/24"
