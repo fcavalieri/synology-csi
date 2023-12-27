@@ -13,7 +13,7 @@ type CreateK8sVolumeSpec struct {
 	NfsClients       string
 	K8sVolumeName    string
 	LunName          string
-	LunDescription   string
+	Description      string
 	ShareName        string
 	Location         string
 	Size             int64

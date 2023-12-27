@@ -11,7 +11,7 @@ The official [Container Storage Interface](https://github.com/container-storage-
 Driver Name: csi.san.synology.com
 | Driver Version                                                                   | Image                                                                 | Supported K8s Version |
 | -------------------------------------------------------------------------------- | --------------------------------------------------------------------- | --------------------- |
-| [v2.0.0](https://github.com/SynologyOpenSource/synology-csi/tree/release-v1.1.5) | [synology-csi:v2.0.0](https://hub.docker.com/r/fcavalieri/synology-csi) | 1.20+                 |
+| [v2.1.0](https://github.com/SynologyOpenSource/synology-csi/tree/release-v1.1.5) | [synology-csi:v2.1.0](https://hub.docker.com/r/fcavalieri/synology-csi) | 1.20+                 |
 
 
 

@@ -233,7 +233,7 @@ func (service *DsmService) createISCSIVolumeByDsm(dsm *webapi.DSM, spec *models.
 	// 3. Create LUN
 	lunSpec := webapi.LunCreateSpec{
 		Name:        spec.LunName,
-		Description: spec.LunDescription,
+		Description: spec.Description,
 		Location:    spec.Location,
 		Size:        spec.Size,
 		Type:        lunType,

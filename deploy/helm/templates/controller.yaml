@@ -93,6 +93,7 @@ spec:
       {{- with $.Values.images }}
         - name: csi-provisioner
           args:
+            - --extra-create-metadata
             - --csi-address=$(ADDRESS)
             - --timeout=60s
             - --v=5
